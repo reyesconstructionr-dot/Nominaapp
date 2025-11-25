@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nómina — Reyes Construction and Remodel</title>
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root{--gap:12px;}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; margin:0; color:#111; background:#fff}
+  header{position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid #e6e6e6}
+  .wrap{max-width:1200px; margin:0 auto; padding:16px;}
+  .brand{display:flex; align-items:center; gap:12px; margin-bottom:8px}
+  .brand img{height:44px; width:auto; border-radius:10px}
+  h1{font-size:20px; margin:0 0 8px 0}
+  .sub{color:#555; font-size:13px; margin-bottom:6px}
+  .controls{display:grid; grid-template-columns:1fr; gap:var(--gap);}
+  @media(min-width:1000px){ .controls{grid-template-columns: 1fr 1fr 2fr auto;} }
+  label{font-size:12px; color:#444; display:block; margin-bottom:6px}
+  input, select, button{font:inherit; padding:10px 12px; border:1px solid #d0d0d0; border-radius:8px}
+  input:focus, select:focus{outline:2px solid #1a73e8; border-color:#1a73e8}
+  button{cursor:pointer; background:#111; color:#fff; border:none}
+  button.ghost{background:#fff; color:#111; border:1px solid #d0d0d0}
+  button.warn{background:#b3261e}
+  button:disabled{opacity:.6; cursor:not-allowed}
+  .row{display:flex; gap:var(--gap); align-items:end}
+  .mt{margin-top:var(--gap)}
+  .mb{margin-bottom:var(--gap)}
+  .grid{display:grid; gap:var(--gap)}
+  .table-wrap{overflow:auto; border:1px solid #eee; border-radius:12px}
+  table{border-collapse:separate; border-spacing:0; width:100%; min-width:980px}
+  th, td{padding:10px 12px; border-bottom:1px solid #f0f0f0; text-align:center; white-space:nowrap}
+  th:first-child, td:first-child{text-align:left}
+  thead th{position:sticky; top:90px; background:#fff; z-index:2; border-bottom:1px solid #e6e6e6; font-size:12px; color:#555}
+  tr:last-child td{border-bottom:none}
+  td input.name{min-width:220px; width:100%}
+  .daybtn{min-width:44px; padding:8px 10px; border-radius:8px; border:1px solid #d0d0d0; background:#fff; color:#111; font-weight:600}
+  .daybtn[data-val="0"]{opacity:.55}
+  .daybtn[data-val="0.5"]{background:#f3f8ff; border-color:#cfe1ff}
+  .daybtn[data-val="1"]{background:#e8f5e9; border-color:#b7e0c2}
+  .right{margin-left:auto}
+  .badge{display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid #ddd; font-size:12px; color:#333}
+  footer{padding:24px 16px 48px; border-top:1px solid #eee; background:#fafafa}
+  .summary{display:grid; gap:var(--gap)}
+  @media(min-width:1000px){ .summary{grid-template-columns:1fr 1fr} }
+  .card{border:1px solid #eee; border-radius:12px; padding:16px; background:#fff}
+  .muted{color:#666; font-size:13px}
+  .mono{font-variant-numeric: tabular-nums}
+  .actions{display:flex; gap:8px; flex-wrap:wrap}
+  .danger{color:#b3261e}
+  .tiny{font-size:11px; color:#777}
+  .report-table{border-collapse:collapse; width:100%}
+  .report-table th, .report-table td{border:1px solid #e6e6e6; padding:8px 10px; text-align:right}
+  .report-table th:first-child, .report-table td:first-child{text-align:left}
+  .report-total{font-weight:700; background:#fafafa}
+  @media print {
+    header, .actions, .no-print {display:none !important}
+    thead th{top:0}
+    body{margin:0}
+    .wrap{padding:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <img src="icons/logo.png" alt="Reyes Construction and Remodel">
+      <div>
+        <div style="font-weight:700;">Reyes Construction and Remodel</div>
+        <div class="tiny" style="color:#555;">Nómina por día — 0 / ½ / 1</div>
+      </div>
+    </div>
+    <div class="sub">PWA instalable en iPhone: abre en Safari y “Agregar a la pantalla de inicio”. Guarda por semana en tu dispositivo.</div>
+    <div class="controls">
+      <div>
+        <label>Inicio de semana</label>
+        <input id="weekStart" type="date">
+      </div>
+      <div>
+        <label>Moneda</label>
+        <select id="currency">
+          <option value="USD" selected>USD ($)</option>
+          <option value="MXN">MXN ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="COP">COP ($)</option>
+        </select>
+      </div>
+      <div>
+        <label>Acciones</label>
+        <div class="actions">
+          <button id="addWorkerBtn" title="Agregar trabajador">+ Trabajador</button>
+          <button id="addFiveBtn" class="ghost" title="Agregar 5 filas vacías">+5 Trabajadores</button>
+          <button class="ghost" id="resetDaysBtn" title="Poner 0 a todos">Reset días</button>
+          <button class="ghost" id="exportCsvBtn">Exportar CSV</button>
+          <button class="ghost" id="printBtn">Imprimir / Guardar PDF</button>
+          <button class="ghost" id="backupAllBtn" title="Exporta todas las semanas">Exportar todo</button>
+          <button class="ghost" id="importBtn" title="Importa respaldo (.json)">Importar respaldo</button>
+          <input id="fileInput" type="file" accept=".json,application/json" style="display:none">
+        </div>
+      </div>
+      <div class="right">
+        <label class="muted">Semana</label>
+        <div id="weekLabel" class="badge">—</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="table-wrap mt">
+    <table id="daysTable" aria-describedby="Tabla de días trabajados por trabajador">
+      <thead>
+        <tr>
+          <th>Trabajador</th>
+          <th>Pago por día</th>
+          <th id="d0">Lun</th>
+          <th id="d1">Mar</th>
+          <th id="d2">Mié</th>
+          <th id="d3">Jue</th>
+          <th id="d4">Vie</th>
+          <th id="d5">Sáb</th>
+          <th id="d6">Dom</th>
+          <th>Días (sumados)</th>
+          <th>Pago semana</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="summary mt">
+    <div class="card">
+      <h2 style="margin:0 0 8px 0;">Resumen por trabajador</h2>
+      <div id="perWorkerSummary" class="grid"></div>
+    </div>
+    <div class="card">
+      <h2 style="margin:0 0 8px 0;">Total de la semana</h2>
+      <div class="grid">
+        <div><span class="muted">Total trabajadores:</span> <strong id="workersCount">0</strong></div>
+        <div><span class="muted">Días totales (sumados):</span> <strong class="mono" id="totalDays">0</strong></div>
+        <div><span class="muted">Nómina total:</span> <strong class="mono" id="totalPayroll">$0.00</strong></div>
+        <div class="muted tiny">Tip: imprime/guarda PDF para entregar a cliente o archivo interno.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <h2 style="margin:0 0 8px 0;">Reporte semanal (imprimible)</h2>
+    <table class="report-table" id="reportTable">
+      <thead>
+        <tr>
+          <th>Trabajador</th>
+          <th>Días sumados</th>
+          <th>Pago por día</th>
+          <th>Pago semana</th>
+        </tr>
+      </thead>
+      <tbody id="reportBody"></tbody>
+      <tfoot>
+        <tr class="report-total">
+          <td>Total general</td>
+          <td id="rTotalDays" class="mono">0</td>
+          <td></td>
+          <td id="rTotalPayroll" class="mono">$0.00</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="muted mt no-print">Instálala en iPhone: abre en Safari → Compartir → Agregar a pantalla de inicio.</p>
+</main>
+
+<footer>
+  <div class="wrap muted">
+    <div>Hecho para <strong>Reyes Construction and Remodel</strong>. — <span id="footerWeek">—</span></div>
+  </div>
+</footer>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
+</script>
+
+<script>
+(function(){
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const weekStartInput = $("#weekStart");
+  const currencySelect = $("#currency");
+  const weekLabel = $("#weekLabel");
+  const footerWeek = $("#footerWeek");
+  const tbody = $("#tbody");
+  const perWorkerSummary = $("#perWorkerSummary");
+  const workersCountEl = $("#workersCount");
+  const totalDaysEl = $("#totalDays");
+  const totalPayrollEl = $("#totalPayroll");
+  const addWorkerBtn = $("#addWorkerBtn");
+  const addFiveBtn = $("#addFiveBtn");
+  const resetDaysBtn = $("#resetDaysBtn");
+  const exportCsvBtn = $("#exportCsvBtn");
+  const printBtn = $("#printBtn");
+  const reportBody = $("#reportBody");
+  const rTotalDays = $("#rTotalDays");
+  const rTotalPayroll = $("#rTotalPayroll");
+  const backupAllBtn = $("#backupAllBtn");
+  const importBtn = $("#importBtn");
+  const fileInput = $("#fileInput");
+
+  let state = {
+    weekStart: null,
+    currency: "USD",
+    workers: []
+  };
+
+  const WEEK_PREFIXES = [
+    "nomina_dias_week_",
+    "nomina_dias_mediodia_week_",
+    "nomina_dias_mediodia_week_v2_",
+    "nomina_dias_mediodia_week_v3_"
+  ];
+  const CURRENT_PREFIX = "nomina_dias_mediodia_week_v4_brand_";
+
+  const fmt = (num, currency=state.currency) => {
+    try{ return new Intl.NumberFormat('es-US',{style:'currency',currency}).format(num||0); }
+    catch(e){ return '$' + (num||0).toFixed(2); }
+  };
+  const pad = n => String(n).padStart(2,'0');
+
+  function defaultWeekStart(today=new Date()){
+    const d = new Date(today);
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    d.setDate(d.getDate() + diff);
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  }
+
+  function dayLabelsFromWeekStart(iso){
+    const base = new Date(iso + "T00:00:00");
+    const fmtDay = new Intl.DateTimeFormat('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'});
+    return [...Array(7)].map((_,i)=>{ const d=new Date(base); d.setDate(d.getDate()+i); return fmtDay.format(d); });
+  }
+  function renderDayHeaders(){
+    const labels = dayLabelsFromWeekStart(state.weekStart);
+    labels.forEach((label,i)=>{ document.querySelector("#d"+i).textContent = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i] + " (" + label.split(", ")[1] + ")"; });
+  }
+  function getWeekKey(dateStr){ return CURRENT_PREFIX + dateStr; }
+
+  function load(weekISO){
+    let raw = localStorage.getItem(getWeekKey(weekISO));
+    if(!raw){
+      for(const p of WEEK_PREFIXES){
+        const alt = localStorage.getItem(p + weekISO);
+        if(alt){ raw = alt; break; }
+      }
+      if(raw){ localStorage.setItem(getWeekKey(weekISO), raw); }
+    }
+    if(raw){ try{ state = JSON.parse(raw); }catch(e){} }
+    else{ state = { weekStart: weekISO, currency:"USD", workers: [] }; }
+
+    state.weekStart = state.weekStart || weekISO;
+    state.currency = state.currency || "USD";
+    state.workers = Array.isArray(state.workers)? state.workers : [];
+    for(const w of state.workers){
+      if(!Array.isArray(w.days) || w.days.length !== 7){ w.days=[0,0,0,0,0,0,0]; }
+      else{
+        w.days = w.days.map(v => (v===true?1 : v===false?0 : Number(v)||0));
+        w.days = w.days.map(v => v<=0?0 : (v<1 && v>=0.5)?0.5 : 1);
+      }
+      if(typeof w.dayPay !== "number"){ w.dayPay = 100; }
+    }
+    weekStartInput.value = state.weekStart;
+    currencySelect.value = state.currency;
+    updateWeekLabels();
+    save();
+    render();
+  }
+
+  function save(){ localStorage.setItem(getWeekKey(state.weekStart), JSON.stringify(state)); }
+  function updateWeekLabels(){
+    const labels = dayLabelsFromWeekStart(state.weekStart);
+    weekLabel.textContent = labels[0] + " – " + labels[6];
+    footerWeek.textContent = "Semana " + labels[0] + " – " + labels[6];
+    renderDayHeaders();
+  }
+
+  function addWorker(prefill){
+    const id = crypto.randomUUID? crypto.randomUUID() : String(Date.now()+Math.random());
+    const w = Object.assign({ id, name:"", dayPay:100, days:[0,0,0,0,0,0,0] }, prefill||{});
+    state.workers.push(w); save(); render();
+  }
+  function addFive(){ for(let i=0;i<5;i++) addWorker({name:"", dayPay:100}); }
+  function removeWorker(id){ state.workers = state.workers.filter(w=>w.id!==id); save(); render(); }
+  function setName(wid, value){ const w=state.workers.find(x=>x.id===wid); if(!w) return; w.name=value; save(); }
+  function setDayPay(wid, value){ const w=state.workers.find(x=>x.id===wid); if(!w) return; const v=Number(value); w.dayPay = isFinite(v)? Math.max(0,v):0; save(); renderTotalsOnly(); }
+  function cycleDayValue(val){ const seq=[0,0.5,1]; const idx=seq.indexOf(val); return seq[(idx+1)%seq.length]; }
+  function setDayValue(wid, ix, val){ const w=state.workers.find(x=>x.id===wid); if(!w) return; w.days[ix]=val; save(); renderTotalsOnly(); }
+  function resetDays(){ state.workers.forEach(w=>w.days=[0,0,0,0,0,0,0]); save(); render(); }
+
+  function calc(){
+    let totalDays=0, totalPayroll=0;
+    const per = state.workers.map(w=>{
+      const days = w.days.reduce((a,b)=>a+(Number(b)||0),0);
+      const pay = days * w.dayPay;
+      totalDays += days; totalPayroll += pay;
+      return { id:w.id, name:w.name||"(Sin nombre)", days, pay, dayPay:w.dayPay };
+    });
+    return {per, totalDays, totalPayroll};
+  }
+  function dayLabel(v){ if(v===0) return "—"; if(v===0.5) return "½"; return "✓"; }
+
+  function render(){
+    tbody.innerHTML="";
+    for(const w of state.workers){
+      const tr=document.createElement("tr");
+      const tdName=document.createElement("td");
+      const nameInput=document.createElement("input");
+      nameInput.className="name"; nameInput.placeholder="Nombre del trabajador";
+      nameInput.value=w.name||""; nameInput.addEventListener("input",e=>setName(w.id,e.target.value));
+      tdName.appendChild(nameInput); tr.appendChild(tdName);
+
+      const tdPay=document.createElement("td");
+      const payInput=document.createElement("input");
+      payInput.type="number"; payInput.step="0.01"; payInput.min="0";
+      payInput.value=w.dayPay; payInput.title="Pago por día";
+      payInput.addEventListener("input",e=>setDayPay(w.id,e.target.value));
+      tdPay.appendChild(payInput); tr.appendChild(tdPay);
+
+      for(let i=0;i<7;i++){
+        const td=document.createElement("td");
+        const btn=document.createElement("button");
+        const val=Number(w.days[i])||0;
+        btn.className="daybtn"; btn.dataset.val=String(val); btn.textContent=dayLabel(val);
+        btn.addEventListener("click",()=>{ const next=cycleDayValue(Number(btn.dataset.val)); btn.dataset.val=String(next); btn.textContent=dayLabel(next); setDayValue(w.id,i,next); });
+        td.appendChild(btn); tr.appendChild(td);
+      }
+
+      const tdDays=document.createElement("td"); tdDays.className="mono";
+      const tdWeekPay=document.createElement("td"); tdWeekPay.className="mono";
+      const tdDel=document.createElement("td");
+      const delBtn=document.createElement("button"); delBtn.className="ghost danger"; delBtn.textContent="Quitar";
+      delBtn.addEventListener("click",()=>removeWorker(w.id)); tdDel.appendChild(delBtn);
+
+      tr.appendChild(tdDays); tr.appendChild(tdWeekPay); tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    }
+    renderTotalsOnly();
+  }
+
+  function renderTotalsOnly(){
+    const {per,totalDays,totalPayroll}=calc();
+    workersCountEl.textContent=state.workers.length;
+    totalDaysEl.textContent=totalDays.toFixed(2);
+    totalPayrollEl.textContent=fmt(totalPayroll);
+
+    const rows=$$("#tbody tr");
+    rows.forEach((tr,idx)=>{
+      const tdDays=tr.children[9]; const tdWeekPay=tr.children[10];
+      const item=per[idx]; tdDays.textContent=(item?.days||0).toFixed(2); tdWeekPay.textContent=fmt(item?.pay||0);
+    });
+
+    perWorkerSummary.innerHTML="";
+    per.forEach(p=>{
+      const div=document.createElement("div"); div.className="row";
+      const left=document.createElement("div");
+      left.innerHTML=`<strong>${escapeHtml(p.name)}</strong><div class="muted">Pago por día: ${fmt(p.dayPay)}</div>`;
+      const right=document.createElement("div"); right.className="right mono";
+      right.innerHTML=`<div>Días sumados: <strong>${p.days.toFixed(2)}</strong></div><div>Pago semana: <strong>${fmt(p.pay)}</strong></div>`;
+      div.appendChild(left); div.appendChild(right); perWorkerSummary.appendChild(div);
+    });
+
+    reportBody.innerHTML="";
+    per.forEach(p=>{
+      const tr=document.createElement("tr");
+      const tdName=document.createElement("td"); tdName.textContent=p.name;
+      const tdDays=document.createElement("td"); tdDays.className="mono"; tdDays.textContent=p.days.toFixed(2);
+      const tdDayPay=document.createElement("td"); tdDayPay.className="mono"; tdDayPay.textContent=fmt(p.dayPay);
+      const tdPay=document.createElement("td"); tdPay.className="mono"; tdPay.textContent=fmt(p.pay);
+      tr.append(tdName,tdDays,tdDayPay,tdPay); reportBody.appendChild(tr);
+    });
+    rTotalDays.textContent=totalDays.toFixed(2);
+    rTotalPayroll.textContent=fmt(totalPayroll);
+  }
+
+  function exportCSV(){
+    const headers=["Trabajador","Pago por día","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo","Días sumados","Pago semana"];
+    const rows=[headers];
+    const {per}=calc();
+    state.workers.forEach((w,i)=>{
+      const p=per[i];
+      const row=[(w.name||"").replace(/,/g," "), w.dayPay.toFixed(2), ...w.days.map(d=>(Number(d)||0).toFixed(2)), p.days.toFixed(2), (p.pay||0).toFixed(2)];
+      rows.push(row);
+    });
+    const csv=rows.map(r=>r.join(",")).join("\n");
+    downloadBlob(csv, `nomina_dias_${state.weekStart}.csv`, "text/csv;charset=utf-8;");
+  }
+
+  function listAllWeeks(){
+    const keys=[]; const prefixes=[...WEEK_PREFIXES, CURRENT_PREFIX];
+    for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(prefixes.some(p=>k.startsWith(p))){ keys.push(k); } }
+    keys.sort((a,b)=> a.slice(-10).localeCompare(b.slice(-10))); return keys;
+  }
+  function backupAll(){
+    const keys=listAllWeeks();
+    const payload={ app:"nomina_por_dia", version:5, exported_at:new Date().toISOString(), items: keys.map(k=>({key:k, value:localStorage.getItem(k)})) };
+    const json=JSON.stringify(payload,null,2);
+    downloadBlob(json, `respaldo_nomina_${new Date().toISOString().slice(0,10)}.json`, "application/json");
+  }
+  function importBackup(file){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const payload=JSON.parse(e.target.result);
+        if(!payload || !Array.isArray(payload.items)){ alert("Archivo inválido"); return; }
+        let count=0;
+        payload.items.forEach(item=>{
+          if(typeof item.key==="string" && typeof item.value==="string"){
+            const existing=localStorage.getItem(item.key);
+            if(existing !== item.value){ localStorage.setItem(item.key,item.value); count++; }
+          }
+        });
+        alert("Importación completada. Nuevos/actualizados: "+count+". Selecciona la semana en 'Inicio de semana'.");
+      }catch(err){ alert("No se pudo leer el archivo. Selecciona el .json exportado."); }
+    };
+    reader.readAsText(file);
+  }
+
+  function downloadBlob(content, filename, type){
+    const blob=new Blob([content], {type: type || "application/octet-stream"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>\"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+
+  weekStartInput.addEventListener("change", e=>{ const iso=e.target.value; if(!iso) return; save(); load(iso); });
+  currencySelect.addEventListener("change", e=>{ state.currency=e.target.value; save(); renderTotalsOnly(); });
+  addWorkerBtn.addEventListener("click", ()=>addWorker({name:"", dayPay:100}));
+  addFiveBtn.addEventListener("click", addFive);
+  resetDaysBtn.addEventListener("click", resetDays);
+  exportCsvBtn.addEventListener("click", exportCSV);
+  printBtn.addEventListener("click", ()=>window.print());
+  backupAllBtn.addEventListener("click", backupAll);
+  importBtn.addEventListener("click", ()=> fileInput.click());
+  fileInput.addEventListener("change", e=>{ const f=e.target.files&&e.target.files[0]; if(f) importBackup(f); fileInput.value=""; });
+
+  const iso=defaultWeekStart(new Date());
+  weekStartInput.value=iso; load(iso);
+})();
+</script>
+</body>
+</html>
